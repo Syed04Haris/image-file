@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Text Overlay</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+            margin: 0;
+        }
+        canvas {
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <input type="file" id="imageInput" accept="image/*">
+    <input type="text" id="textInput" placeholder="Enter text here">
+    <button onclick="generateImage()">Generate Image</button>
+    <br>
+    <canvas id="canvas"></canvas>
+    <br>
+    <a id="downloadLink" style="display: none;">Download Image</a>
+
+    <script>
+        function generateImage() {
+            const imageInput = document.getElementById('imageInput');
+            const textInput = document.getElementById('textInput');
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+
+            if (imageInput.files && imageInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        // Set canvas size to screen size
+                        canvas.width = window.innerWidth;
+                        canvas.height = window.innerHeight;
+
+                        // Calculate aspect ratio and scaling
+                        const imgAspectRatio = img.width / img.height;
+                        const canvasAspectRatio = canvas.width / canvas.height;
+                        let drawWidth, drawHeight;
+
+                        if (imgAspectRatio > canvasAspectRatio) {
+                            drawWidth = canvas.width;
+                            drawHeight = drawWidth / imgAspectRatio;
+                        } else {
+                            drawHeight = canvas.height;
+                            drawWidth = drawHeight * imgAspectRatio;
+                        }
+
+                        // Center the image
+                        const drawX = (canvas.width - drawWidth) / 2;
+                        const drawY = (canvas.height - drawHeight) / 2;
+
+                        ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
+
+                        // Add text on top of the image
+                        const text = textInput.value;
+                        const fontSize = 30; // Customize font size as needed
+                        const lineHeight = 1.2; // Line height factor for spacing
+                        const padding = 20; // Padding around the text
+                        ctx.font = `${fontSize}px Arial`;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'top'; // Use 'top' for lineHeight calculation
+
+                        // Calculate overlay height based on text lines
+                        const maxTextWidth = drawWidth - padding * 2;
+                        const textLines = wrapText(ctx, text, maxTextWidth);
+                        const overlayHeight = textLines.length * fontSize * lineHeight + padding * 2;
+
+                        // Draw black overlay with opacity behind the text
+                        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                        const overlayY = canvas.height - overlayHeight; // Fix overlay at bottom
+                        ctx.fillRect(drawX, overlayY, drawWidth, overlayHeight);
+
+                        // Draw text over the overlay
+                        ctx.fillStyle = 'white'; // Customize text color as needed
+                        textLines.forEach((line, i) => {
+                            ctx.fillText(line, canvas.width / 2, overlayY + padding + fontSize * lineHeight * i);
+                        });
+
+                        // Display the download link
+                        const downloadLink = document.getElementById('downloadLink');
+                        downloadLink.href = canvas.toDataURL('image/png');
+                        downloadLink.download = 'image_with_text.png';
+                        downloadLink.style.display = 'block';
+                        downloadLink.textContent = 'Download Image';
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(imageInput.files[0]);
+            }
+        }
+
+        function wrapText(ctx, text, maxWidth) {
+            const words = text.split(' ');
+            const lines = [];
+            let currentLine = words[0];
+
+            for (let i = 1; i < words.length; i++) {
+                const word = words[i];
+                const width = ctx.measureText(currentLine + ' ' + word).width;
+                if (width < maxWidth) {
+                    currentLine += ' ' + word;
+                } else {
+                    lines.push(currentLine);
+                    currentLine = word;
+                }
+            }
+            lines.push(currentLine);
+            return lines;
+        }
+    </script>
+</body>
+</html>
